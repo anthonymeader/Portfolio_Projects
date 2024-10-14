@@ -16,9 +16,9 @@ volatile char transmit[2]; //transmit command to OLED
 unsigned int led; //Transmit to LEDS
 volatile char xy[7]; //XY Intialize Coordinates
 int n; //I2C count
-int command_1; //I2C Flags
-int command_0;
-int command_2;
+int i2c_0; //I2C Flags
+int i2c_1; 
+int i2c_2;
 //---------------------------
 
 //------INPUT VARIABLES------
@@ -30,28 +30,28 @@ unsigned int input_p; //paddle distance input
 int get_time_ones=0; //time tens
 int get_time_tens=0; //time hundreds
 int get_time_hundred =0; //time thousands
-int flag = 0; //tens flag
-int flag_2 = 0; //hundreds flag
-int flag_3 = 0; //thousands flag
+int tens_flag = 0; //tens flag
+int hundreds_flag = 0; //hundreds flag
+int thousands_flag = 0; //thousands flag
 int time_start = 0; //time flag
 
 
 //------PADDLE VARIABLES--------
-unsigned int paddle_1_p2 = 0x7C; //P2 Paddle Col2
-unsigned int paddle_2_p2 = 0x7E; //P2 Paddle Col2
+unsigned int paddle_1_col1 = 0x7C; //P2 Paddle Col2
+unsigned int paddle_1_col2 = 0x7E; //P2 Paddle Col2
 
-unsigned int paddle_1_p1 = 0x00; //P1 paddle Col1
-unsigned int paddle_2_p1 = 0x02; //P1 paddle Col2
+unsigned int paddle_2_col1 = 0x00; //P1 paddle Col1
+unsigned int paddle_2_col2 = 0x02; //P1 paddle Col2
 
-unsigned int height_1_p1 = 0x00; //P1 Paddle row 1
-unsigned int height_2_p1 = 0x01; //P1 paddle row 2
+unsigned int paddle_1_row1 = 0x00; //P1 Paddle row 1
+unsigned int paddle_1_row2 = 0x01; //P1 paddle row 2
 
-unsigned int height_1_p2 = 0x00; //P2 paddle row1
-unsigned int height_2_p2 = 0x01; //P2 paddle row2
-unsigned int inc_1 = 0xFF; //From ADC Range
-unsigned int inc_2 = 0xFF;
-unsigned int inc_1_1 = 0xFF; //From ADC Range
-unsigned int inc_2_1 = 0xFF;
+unsigned int paddle_2_row1 = 0x00; //P2 paddle row1
+unsigned int paddle_2_row2 = 0x01; //P2 paddle row2
+unsigned int new_paddle_1_row1 = 0xFF; //From ADC Range
+unsigned int new_paddle_1_row2 = 0xFF;
+unsigned int new_paddle_2_row1 = 0xFF; //From ADC Range
+unsigned int new_paddle_2_row2 = 0xFF;
 //-----------------------------
 
 //------BALL VARIABLES---------
@@ -59,24 +59,24 @@ unsigned int ball_1x = 0x30; //Ball Col1
 unsigned int ball_2x = 0x34; //Ball Col2
 unsigned int ball_y1 = 0x03; //Ball Height1
 unsigned int ball_y2 = 0x04; //Ball Height2
-int hit = 0; //x hit
-int yhit = 0; //y hit
-int ycount = 0; //Slope of Ball
+int x_contact = 0; //x hit
+int y_contact = 0; //y hit
+int y_slope = 0; //Slope of Ball
 //-----------------------------
 
 int p2_wincount = 0; //Increments if Player two wins round
 int p1_wincount = 0; //increments if player one wins round
 
-int on_game = 0; //Resets every round
+int new_round = 0; //Resets every round
 
 unsigned int ADC_Value; //Gets ADC Value
 int count = 2; //ADC Read count for selecting channel, 2 = paddle update paddle 1, 1 = update paddle two, it decrements
 
 //I2C Function to set coordinates of what is being displayed
 void OLED_setXY(char col_start, char col_end, char page_start, char page_end){
-    command_1 = 1; //assert flag
-    command_0 = 0;
-    command_2 = 0;
+    i2c_1 = 1; //assert flag
+    i2c_0 = 0;
+    i2c_2 = 0;
     n = 0;
     xy[0]=0x00;
     xy[1]=0x21;
@@ -95,7 +95,7 @@ void OLED_setXY(char col_start, char col_end, char page_start, char page_end){
     UCB1IFG &= ~UCSTPIFG;
 }
 //I2C function to sending data to OLED
-void OLED_Data(char *DATA)
+void OLED_Data(char *DATA){
     int g = 0;
     int index = 0;
     int len = strlen(DATA);
@@ -109,9 +109,9 @@ void OLED_Data(char *DATA)
 }
 //I2C Function to send data to OLED or intialize
 void OLED_init(unsigned int first, unsigned int second){
-    command_0 = 1; //assert flag
-    command_1 = 0;
-    command_2 = 0;
+    i2c_0 = 1; //assert flag
+    i2c_1 = 0;
+    i2c_2 = 0;
     n = 0;
     transmit[0]=first;
     transmit[1]=second;
@@ -140,9 +140,9 @@ void ball_off(unsigned int one, unsigned int two, unsigned int three, unsigned i
 }
 //Transmits data to LEDS for scoreboard
 void LED_Transmit(unsigned int first){
-    command_0 = 0;
-    command_1 = 0;
-    command_2 = 1;
+    i2c_0 = 0;
+    i2c_1 = 0;
+    i2c_2 = 1;
     n = 0;
     led=first;
     UCB1TBCNT = 1; //Transmit 1 Byte of Data;
@@ -274,25 +274,25 @@ int main (void){
             input = P3IN; //read inputs
             input_p = P6IN;
             if(input_p != 0){ //Default Paddle Input
-                paddle_1_p2 = 0x7C;
-                paddle_2_p2 = 0x7E;
+                paddle_1_col1 = 0x7C;
+                paddle_1_col2 = 0x7E;
 
-                paddle_1_p1 = 0x00;
-                paddle_2_p1 = 0x02;
+                paddle_2_col1 = 0x00;
+                paddle_2_col2 = 0x02;
                 ball_1x = 0x3D;
                 ball_2x = 0x41;
             }
             else if (input_p == 0){ //Paddle input is switched to on
-                paddle_1_p2 = 0x5E; //Bring paddles closer
-                paddle_2_p2 = 0x60;
+                paddle_1_col1 = 0x5E; //Bring paddles closer
+                paddle_1_col2 = 0x60;
 
-                paddle_1_p1 = 0x1E; //bring paddles closer
-                paddle_2_p1 = 0x20;
+                paddle_2_col1 = 0x1E; //bring paddles closer
+                paddle_2_col2 = 0x20;
                 ball_1x = 0x3D;
                 ball_2x = 0x41;
             }
             time_start = 1; //Assert new game flag
-            on_game = 0; //Assert new round flag
+            new_round = 0; //Assert new round flag
             OLED_setXY(0x34, 0x7F, 0x02, 0x01); //Center Coordinates for start message
             OLED_Data("Press");
             OLED_setXY(0x34, 0x7F, 0x03, 0x02);
@@ -322,7 +322,6 @@ int main (void){
             if (counting == 3){
                 ADCCTL0 |= ADCENC | ADCSC; //starts adc
                 __delay_cycles(1000);
-                // while((ADCIFG & ADCIFG0) == 0){} //wait for ADC to clear
                 counting = 0;
             }
             counting++;
@@ -350,7 +349,7 @@ int main (void){
             OLED_Off();
             p1_wincount = 0; //reset game
             p2_wincount = 0; //reset game
-            on_game = 0;     //reset game
+            new_round = 0;     //reset game
             win = 1;         //reset game
             start = 0;       //reset game
         }
@@ -365,65 +364,65 @@ int main (void){
 void updateBall(void){
     ball_off(ball_1x,ball_2x,ball_y1,ball_y2); //clear ball to write a new ball
 
-    if(ball_1x == (paddle_2_p1 + 0x01)){ //if the ball its P1 Paddle
-        hit = 1; //flag to go left
-        if (ball_y1 == height_2_p2 || ball_y2 == height_1_p2){ //if ball hits middle of paddle
-            yhit = 0; //deflect straight
+    if(ball_1x == (paddle_2_col2 + 0x01)){ //if the ball its P1 Paddle
+        x_contact = 1; //flag to go left
+        if (ball_y1 == paddle_2_row2 || ball_y2 == paddle_2_row1){ //if ball hits middle of paddle
+            y_contact = 0; //deflect straight
         }
-        else if (ball_y1 == height_1_p2 && ball_y2 != height_2_p2){
-            yhit = 1; //if ball hits top of paddle, deflect up
+        else if (ball_y1 == paddle_2_row1 && ball_y2 != paddle_2_row2){
+            y_contact = 1; //if ball hits top of paddle, deflect up
         }
-        else if (ball_y2 == height_2_p2 && ball_y1 != height_1_p2){
-            yhit = 2; //if ball hits bottom of paddle, deflect down
+        else if (ball_y2 == paddle_2_row2 && ball_y1 != paddle_2_row1){
+            y_contact = 2; //if ball hits bottom of paddle, deflect down
         }
         else{
-            yhit = 0; //reset flags for a new round
-            hit = 0;
-            ball_1x = paddle_2_p1+0x01; //reset ball
+            y_contact = 0; //reset flags for a new round
+            x_contact = 0;
+            ball_1x = paddle_2_col2+0x01; //reset ball
             ball_2x = ball_1x+4;;
-            ball_y1 = height_2_p2;
-            ball_y2 = height_1_p2;
+            ball_y1 = paddle_2_row2;
+            ball_y2 = paddle_2_row1;
             p1_wincount++; //increment win
             LED_Transmit(0x02); //transmit to LED to update scoreboard
             __delay_cycles(1000);
-            on_game = 0; //signal new round
+            new_round = 0; //signal new round
         }
     }
 
-    else if (ball_2x == (paddle_1_p2 - 0x01)){
-        hit = 2;
-        if (ball_y1 == height_2_p1 || ball_y2 == height_1_p1){
-            yhit = 0;
+    else if (ball_2x == (paddle_1_col1 - 0x01)){
+        x_contact = 2;
+        if (ball_y1 == paddle_1_row2 || ball_y2 == paddle_1_row1){
+            y_contact = 0;
         }
-        else if (ball_y1 == height_1_p1 && ball_y2 != height_2_p1){
-            yhit = 1;
+        else if (ball_y1 == paddle_1_row1 && ball_y2 != paddle_1_row2){
+            y_contact = 1;
         }
-        else if (ball_y2 == height_2_p1 && ball_y1 != height_1_p1){
-            yhit = 2;
+        else if (ball_y2 == paddle_1_row2 && ball_y1 != paddle_1_row1){
+            y_contact = 2;
         }
         else{
-            yhit = 0;
-            hit = 2;
-            ball_1x = paddle_1_p2-5;
+            y_contact = 0;
+            x_contact = 2;
+            ball_1x = paddle_1_col1-5;
             ball_2x = ball_1x+4;
-            ball_y1 = height_2_p1;
-            ball_y2 = height_1_p1;
+            ball_y1 = paddle_1_row2;
+            ball_y2 = paddle_1_row1;
             p2_wincount++;
             LED_Transmit(0x01);
             __delay_cycles(1000);
-            on_game = 0;
+            new_round = 0;
 
         }
     }
 
-    if (ycount == 15){ //Slope is 15 cols over 1 row
+    if (y_slope == 15){ //Slope is 15 cols over 1 row
         if(ball_y1 == 0x00){ //if hits bottom of screen
-            yhit = 1;
+            y_contact = 1;
         }
         else if (ball_y2 == 0x07){ //if hits top of screen
-            yhit = 2;
+            y_contact = 2;
         }
-        switch (yhit){
+        switch (y_contact){
         case 0:
             ball_y1 = ball_y1; //slope = 0, straight line
             ball_y2 = ball_y2;
@@ -441,11 +440,11 @@ void updateBall(void){
             ball_y2 = ball_y2 + 0x01;
             break;
         }
-        ycount = 0;
+        y_slope = 0;
 
 
     }
-    switch (hit){ //update x axis each clock cycle
+    switch (x_contact){ //update x axis each clock cycle
     case 0:
         ball_1x++;
         ball_2x++;
@@ -470,7 +469,7 @@ void updateBall(void){
         __delay_cycles(1);
     }
 
-    ycount++;
+    y_slope++;
 
 
 
@@ -481,99 +480,37 @@ void updatePaddle(void){
         get_time_ones=0;
         get_time_tens=0;
         get_time_hundred =0;
-        flag = 0;
-        flag_2 = 0;
-        flag_3 = 0;
+        tens_flag = 0;
+        hundreds_flag = 0;
+        thousands_flag = 0;
         time_start = 0;
     }
-    if (on_game == 0){ //new round, clear and update display
+    if (new_round == 0){ //new round, clear and update display
         OLED_Off();
-        on_game = 1;
-        OLED_setXY(paddle_1_p2, paddle_2_p2, height_2_p1, height_1_p1);
+        new_round = 1;
+        OLED_setXY(paddle_1_col1, paddle_1_col2, paddle_1_row2, paddle_1_row1);
         OLED_Data("|");
-        OLED_setXY(paddle_1_p1, paddle_2_p1, height_2_p2, height_1_p2);
+        OLED_setXY(paddle_2_col1, paddle_2_col2, paddle_2_row2, paddle_2_row1);
         OLED_Data("|");
 
     }
     else {
-        if (inc_1 != height_1_p1){ //if ADC range != current paddle dimensions, change them and update
-            ball_off(paddle_1_p2, paddle_2_p2, height_2_p1, height_1_p1);
-            height_1_p1 = inc_1;
-            height_2_p1 = inc_2;
-            OLED_setXY(paddle_1_p2, paddle_2_p2, height_2_p1, height_1_p1);
+        if (new_paddle_1_row1 != paddle_1_row1){ //if ADC range != current paddle dimensions, change them and update
+            ball_off(paddle_1_col1, paddle_1_col2, paddle_1_row2, paddle_1_row1);
+            paddle_1_row1 = new_paddle_1_row1;
+            paddle_1_row2 = new_paddle_1_row2;
+            OLED_setXY(paddle_1_col1, paddle_1_col2, paddle_1_row2, paddle_1_row1);
             OLED_Data("|");
         }
-        else if(inc_1_1 != height_1_p2){ //if ADC range != current paddle dimensions, change them and update
-            ball_off(paddle_1_p1, paddle_2_p1,height_2_p2, height_1_p2);
-            height_1_p2 = inc_1_1;
-            height_2_p2 = inc_2_1;
-            OLED_setXY(paddle_1_p1, paddle_2_p1, height_2_p2, height_1_p2);
+        else if(new_paddle_2_row1 != paddle_2_row1){ //if ADC range != current paddle dimensions, change them and update
+            ball_off(paddle_2_col1, paddle_2_col2,paddle_2_row2, paddle_2_row1);
+            paddle_2_row1 = new_paddle_2_row1;
+            paddle_2_row2 = new_paddle_2_row2;
+            OLED_setXY(paddle_2_col1, paddle_2_col2, paddle_2_row2, paddle_2_row1);
             OLED_Data("|");
         }
     }
 
-}
-//Function to map ADC values to paddle values
-void movePaddle_1(void){ //assigns paddle height based on ADC value range
-    if (ADC_Value > 0 && ADC_Value < 585){
-        inc_1 = 0x01;
-        inc_2 = 0x00;
-    }
-    else if (ADC_Value > 585 && ADC_Value < 1170){
-        inc_1 = 0x02;
-        inc_2 = 0x01;
-    }
-    else if (ADC_Value > 1170 && ADC_Value < 1755){
-        inc_1 = 0x03;
-        inc_2 = 0x02;
-    }
-    else if (ADC_Value > 1755 && ADC_Value < 2340){
-        inc_1 = 0x04;
-        inc_2 = 0x03;
-    }
-    else if (ADC_Value > 2340 && ADC_Value < 2925){
-        inc_1 = 0x05;
-        inc_2 = 0x04;
-    }
-    else if (ADC_Value > 2925 && ADC_Value < 3510){
-        inc_1 = 0x06;
-        inc_2 = 0x05;
-    }
-    else if (ADC_Value > 3510 && ADC_Value < 4096){
-        inc_1 = 0x07;
-        inc_2 = 0x06;
-    }
-}
-//Function to map ADC values to paddle values
-void movePaddle_2(void){ //assigns paddle height based on ADC range
-    if (ADC_Value > 0 && ADC_Value < 585){
-        inc_1_1 = 0x01;
-        inc_2_1 = 0x00;
-    }
-    else if (ADC_Value > 585 && ADC_Value < 1170){
-        inc_1_1 = 0x02;
-        inc_2_1 = 0x01;
-    }
-    else if (ADC_Value > 1170 && ADC_Value < 1755){
-        inc_1_1 = 0x03;
-        inc_2_1 = 0x02;
-    }
-    else if (ADC_Value > 1755 && ADC_Value < 2340){
-        inc_1_1 = 0x04;
-        inc_2_1 = 0x03;
-    }
-    else if (ADC_Value > 2340 && ADC_Value < 2925){
-        inc_1_1 = 0x05;
-        inc_2_1 = 0x04;
-    }
-    else if (ADC_Value > 2925 && ADC_Value < 3510){
-        inc_1_1 = 0x06;
-        inc_2_1 = 0x05;
-    }
-    else if (ADC_Value > 3510 && ADC_Value < 4096){
-        inc_1_1 = 0x07;
-        inc_2_1 = 0x06;
-    }
 }
 //Interrupt to read time up to 999 seconds
 #pragma vector = TIMER0_B0_VECTOR //time logic
@@ -581,27 +518,27 @@ __interrupt void ISR_TB0_CCR0(void){
     get_time_ones++;
     if (get_time_ones == 10){ //if time = 10 seconds, assert ones flags and reset 10s seconds
         get_time_ones = 0;
-        flag_2 = 1;
+        hundreds_flag = 1;
     }
-    if (flag_2 == 1){ //increment 10s flag
+    if (hundreds_flag == 1){ //increment 10s flag
         get_time_tens++;
-        flag = 0;
-        flag_2 = 0;
+        tens_flag = 0;
+        hundreds_flag = 0;
     }
     if (get_time_tens == 10){ //if  time = 100 seconds, assert 100s flag, reset tens and ones
         get_time_tens = 0;
-        flag_2 = 1;
-        flag_3 = 1;
+        hundreds_flag = 1;
+        thousands_flag = 1;
     }
-    if (flag_3 == 1){// increment 100s flag
+    if (thousands_flag == 1){// increment 100s flag
         get_time_hundred++;
-        flag_2 = 0;
-        flag_3 = 0;
+        hundreds_flag = 0;
+        thousands_flag = 0;
     }
     if (get_time_hundred == 10){ //if time = 1000s, reset time
         get_time_hundred = 0;
-        flag_2 = 0;
-        flag_3 = 0;
+        hundreds_flag = 0;
+        thousands_flag = 0;
     }
     TB0CCTL0 &= ~CCIFG;
 
@@ -621,28 +558,82 @@ __interrupt void ADC_ISR(void){
         count =2;
     }
     if (count == 2){
-        movePaddle_1();
+        if (ADC_Value > 0 && ADC_Value < 585){
+            new_paddle_1_row1 = 0x01;
+            new_paddle_1_row2 = 0x00;
+        }
+        else if (ADC_Value > 585 && ADC_Value < 1170){
+            new_paddle_1_row1 = 0x02;
+            new_paddle_1_row2 = 0x01;
+        }
+        else if (ADC_Value > 1170 && ADC_Value < 1755){
+            new_paddle_1_row1 = 0x03;
+            new_paddle_1_row2 = 0x02;
+        }
+        else if (ADC_Value > 1755 && ADC_Value < 2340){
+            new_paddle_1_row1 = 0x04;
+            new_paddle_1_row2 = 0x03;
+        }
+        else if (ADC_Value > 2340 && ADC_Value < 2925){
+            new_paddle_1_row1 = 0x05;
+            new_paddle_1_row2 = 0x04;
+        }
+        else if (ADC_Value > 2925 && ADC_Value < 3510){
+            new_paddle_1_row1 = 0x06;
+            new_paddle_1_row2 = 0x05;
+        }
+        else if (ADC_Value > 3510 && ADC_Value < 4096){
+            new_paddle_1_row1 = 0x07;
+            new_paddle_1_row2 = 0x06;
+        }
 
     }
     else if (count == 1){
-        movePaddle_2();
+        if (ADC_Value > 0 && ADC_Value < 585){
+            new_paddle_2_row1 = 0x01;
+            new_paddle_2_row2 = 0x00;
+        }
+        else if (ADC_Value > 585 && ADC_Value < 1170){
+            new_paddle_2_row1 = 0x02;
+            new_paddle_2_row2 = 0x01;
+        }
+        else if (ADC_Value > 1170 && ADC_Value < 1755){
+            new_paddle_2_row1 = 0x03;
+            new_paddle_2_row2 = 0x02;
+        }
+        else if (ADC_Value > 1755 && ADC_Value < 2340){
+            new_paddle_2_row1 = 0x04;
+            new_paddle_2_row2 = 0x03;
+        }
+        else if (ADC_Value > 2340 && ADC_Value < 2925){
+            new_paddle_2_row1 = 0x05;
+            new_paddle_2_row2 = 0x04;
+        }
+        else if (ADC_Value > 2925 && ADC_Value < 3510){
+            new_paddle_2_row1 = 0x06;
+            new_paddle_2_row2 = 0x05;
+        }
+        else if (ADC_Value > 3510 && ADC_Value < 4096){
+            new_paddle_2_row1 = 0x07;
+            new_paddle_2_row2 = 0x06;
+        }
     }
     count--;
 }
 //I2C Interrupt
 #pragma vector = EUSCI_B1_VECTOR //I2C Logic
 __interrupt void EUSCI_B1_I2C_ISR(void){
-    if (command_1==1){
+    if (i2c_1==1){
         UCB1TXBUF = xy[n];
         n++;
     }
-    else if (command_0 == 1){
+    else if (i2c_0 == 1){
         UCB1TXBUF = transmit[n];
         n++;
     }
-    else if (command_2 == 1){
+    else if (i2c_2 == 1){
         UCB1TXBUF = led;
-        command_2 = 0;
+        i2c_2 = 0;
 
     }
 }
