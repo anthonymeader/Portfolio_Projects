@@ -1,14 +1,13 @@
+/*
+Author: Anthony Meader
+TEST CELL CONTROL SOFTWARE
+Waits for insturctions from laptop python program
+Receives RS232 commands to execute instructions
+*/
 #include <msp430.h>
 #include <stdint.h>
 #include <stdio.h>
 
-int i = 0;
-int j = 0;
-int k = 0;
-unsigned int min;
-unsigned int min_adc;
-
-volatile int n = 0;
 unsigned int resistance_array[15];
 
 //Actuation Global Variables
@@ -18,6 +17,7 @@ volatile unsigned int pressure;
 volatile int foward = 1;
 volatile int reverse = 0;
 int reset_motor = 0;
+int j = 0;
 //--------------------------
 
 //UART Global Variables
@@ -25,17 +25,21 @@ unsigned int DataIn = 0; //UART Instructions Received
 unsigned int previous_data = 1;
 
 //ADC Global Variables
+unsigned int min_adc;
+unsigned int resistance_array[15];
 volatile unsigned int resistance_ADC;
 volatile unsigned int ADC_Value_1;
 volatile unsigned int ADC_Value_2;
 int channel;
 int previous_channel = 0;
+int i = 0;
+int k = 0;
 //--------------------
 volatile uint16_t resistance = 0;
 
 
 
-//pressure on a9
+//Sample Pressure Sensor
 void read_pressure(void){
     channel = 0;
 
@@ -55,7 +59,7 @@ void read_pressure(void){
     __delay_cycles(200);
 
 }
-//resistance on a4
+//Sample Resistance as Voltage
 void read_resistance(void){
     channel = 1;
 
@@ -85,7 +89,7 @@ void step_motor(void){
             P3OUT ^= BIT0;
             __delay_cycles(350);
         }
-        reverse = 0;
+        reverse = 0; //move foward now
         foward = 1;
     }
 
@@ -95,18 +99,43 @@ void init_motor(void){
     if (j < reset_motor){
         P3OUT ^= BIT0;
         j = j+1;
-        //  __delay_cycles(800);
+        __delay_cycles(300);
 
     }
     else if (j == reset_motor){
         j = 0;
         DataIn = 0x00;
     }
-    /* for (i = reset_motor; i > 0; i--){ //make the distance user setable
-        P3OUT ^= BIT0;
-        __delay_cycles(800);
+}
+
+void measure_resistance(void){
+    P2OUT &= ~BIT0; //clearning these GPIO disconnects resistance circuit from pws
+    P2OUT &= ~BIT1;
+    P2OUT &= ~BIT2;
+    resistance = 0;
+
+    for (k = 0; k<15;k++){
+        for(i = 0; i<15;i++){
+            read_resistance();
+            __delay_cycles(500);   //Delay to let buffer catch up
+            previous_channel = 1;
+            resistance_array[i] = resistance_ADC; //ADD resistance to array for DEBUG
+        }
+        min_adc = resistance_array[0];
+        for (i = 0; i<15; i++){
+            if (resistance_array[i] < min_adc){
+                min_adc = resistance_array[i];
+            }
+        }
+        resistance = resistance+min_adc;
     }
-    P3DIR |= BIT1; //motor forward*/
+
+    resistance = resistance * 1/15; //average 15 measurements
+    ADC_Value_1 = (resistance >> 4) & 0xFF; //Highest Byte (ie 0xFFF would be 0xFF) (Upper 8 Bits)
+    ADC_Value_2 = resistance & 0x0F; //The lower nibble (ie 0xFFF would be 0x0F) (Lower 4 Bits)
+    P2OUT |= BIT0; //asserting these connects the PWS back to the resistance circuit
+    P2OUT |= BIT1;
+    P2OUT |= BIT2;
 
 }
 int main(void)
@@ -133,7 +162,6 @@ int main(void)
     UCA1CTLW0 &= ~UCSWRST;
     //-------------------
 
-
     //----Actuator GPIO Pins----
     P3DIR &= ~BIT2;  // Set P3.2 (ENA) as output
     P3DIR |= BIT1;  // Set P3.1 (DIR) as output, rotates counter clockwise, input rotates clockwise
@@ -159,21 +187,17 @@ int main(void)
 
 
     //-------ADC CONFIG------
-    //check ADCSR, ADCDF
     ADCCTL0 &= ~ADCSHT;
     ADCCTL0 |= ADCSHT_2; //16 conversion cycles
     ADCCTL0 |= ADCON;
-    //ADCCTL0 |= ADCSREF_5; //external positive reference
-
     ADCCTL1 |= ADCSSEL_2;
     ADCCTL1 |= ADCSHP;
     ADCMCTL0 |= ADCINCH_9; //Select channel 9, pressure
-    ADCMCTL0 |= ADCSREF_7; //reference select
-
+    ADCMCTL0 |= ADCSREF_7; //reference select, external positive and negative
     ADCCTL2 &= ~ADCRES;
     ADCCTL2 |= ADCRES_2; //12 bit res
 
-    ADCIE |= ADCIE0;
+    ADCIE |= ADCIE0; // interrupt
     //-----------------------
 
     //----Actuator GPIO Pins----
@@ -191,34 +215,8 @@ int main(void)
             read_pressure(); //read pressure
             previous_channel = 0;
             break;
-        case 0x42: //Take resistance measurement
-            P2OUT &= ~BIT0; //clearning these GPIO disconnects resistance circuit from pws
-            P2OUT &= ~BIT1;
-            P2OUT &= ~BIT2;
-            resistance = 0;
-            min = 0;
-            for (k = 0; k<15;k++){
-                for(i = 0; i<15;i++){
-                    read_resistance();
-                    __delay_cycles(500);   //Delay to let buffer catch up
-                    previous_channel = 1;
-                    resistance_array[i] = resistance_ADC; //ADD resistance to array for DEBUG
-                }
-                min_adc = resistance_array[0];
-                for (i = 0; i<15; i++){
-                    if (resistance_array[i] < min_adc){
-                        min_adc = resistance_array[i];
-
-                    }
-                }
-                min = min+min_adc;
-            }
-            resistance = min/15; //average 15 measurements
-            ADC_Value_1 = (resistance >> 4) & 0xFF; //Highest Byte (ie 0xFFF would be 0xFF) (Upper 8 Bits)
-            ADC_Value_2 = resistance & 0x0F; //The lower nibble (ie 0xFFF would be 0x0F) (Lower 4 Bits)
-            P2OUT |= BIT0; //asserting these connects the PWS back to the resistance circuit
-            P2OUT |= BIT1;
-            P2OUT |= BIT2;
+        case 0x42:
+            measure_resistance(); //Take resistance measurement
             DataIn = 0x00; //clear command register
             UCA1IE |= UCTXIE; //start DUT resistance transmission
             break;
@@ -227,12 +225,6 @@ int main(void)
             reverse = 0;
             previous_channel = 1;
             init_motor(); //retract motor farther back when test is stopped
-            /*foward = 1;
-            reverse = 0;
-            previous_channel = 1;
-            retraction = 0;
-            retraction_distace = 0;
-            DataIn = 0x00;*/
             break;
         case 0x44: //Define actuation distance
             previous_data = DataIn;
@@ -249,11 +241,11 @@ int main(void)
             break;
         }
         __delay_cycles(200);   //Delay to let buffer catch up
-
-
     }
+
     return 0;
 }
+//------ADC INTERRUPT SERVICE ROUTINE----------
 #pragma vector=ADC_VECTOR
 __interrupt void ADC_ISR(void){
     if (channel == 1){
@@ -274,11 +266,13 @@ __interrupt void ADC_ISR(void){
     }
 
 }
+//---------------------------------------------
+//------------UART SERVICE ROUTINE-------------
 #pragma vector=EUSCI_A1_VECTOR
 __interrupt void EUSCI_A1_TX_ISR(void)
 {
     switch(UCA1IV){
-    case 0x02:
+    case 0x02: //receiving data
         if (previous_data == 0x44){
             j = 0;
             retraction_distace = UCA1RXBUF * 160; //convert to mm
@@ -299,19 +293,15 @@ __interrupt void EUSCI_A1_TX_ISR(void)
             DataIn = UCA1RXBUF; //Gets Data from Laptop
         }
         break;
-    case 0x04:
+    case 0x04: //transmitting data
         UCA1TXBUF = ADC_Value_1; //Transmit Upper Byte
-        __delay_cycles(5000);   //Delay to let buffer catch up
         UCA1TXBUF = ADC_Value_2; //Transmit Lower Nibble
-        __delay_cycles(5000);   //Delay to let buffer catch up
         UCA1IFG &= ~UCTXCPTIFG;  //Clear Transmit Interrupt
         break;
     default:
         break;
     }
-    // UCA1IE &= ~UCRXIE; //STOP UART
     UCA1IE &= ~UCTXIE;
-    // __delay_cycles(10000);
 }
-
+//-----------------------------------------------
 
