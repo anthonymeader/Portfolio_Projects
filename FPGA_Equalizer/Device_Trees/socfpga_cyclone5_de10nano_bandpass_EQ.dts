@@ -1,0 +1,35 @@
+// SPDX-License-Identifier: GPL-2.0+
+#include "socfpga_cyclone5_de10_nano.dtsi"
+
+/{
+    model = "Audio Logic Audio Mini";
+
+    tpa613a2 {
+        compatible = "dev,al-tpa613a2";
+    }; 
+    bandpassEQ: bandpassEQ_0@ff207900{
+        compatible = "ajm,bandpassEQ_0";
+        reg = <0xff207900 0x20>;
+    };
+    adc: adc_0@ff200000{
+        compatible = "ajm,adc_0";
+        reg = <0xff200000 0x20>;
+    };
+};
+
+&spi0{
+    status = "okay";
+
+    ad1939@0 {
+        compatible = "dev,al-ad1939";
+        spi-max-frequency = <500000>;
+
+        // chip-select 0
+        reg = <0>;
+
+        // set spi mode to 3
+        spi-cpol;
+        spi-cpha;
+    };
+
+};
