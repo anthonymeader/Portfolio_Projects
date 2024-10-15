@@ -96,11 +96,10 @@ architecture adc_arch of adc is
 					next_state <= walk_config;
 				end if;
 				if (clock_start = '1') then
-					--if previous_state = walk_config then
-						SCLK_Buffer <= '0';
-					    	counter <= 0;
-						next_state <= clock_pulse;
-					--end if;
+					SCLK_Buffer <= '0';
+					counter <= 0;
+					next_state <= clock_pulse;
+					
 				end if;
 
 			when walk_config =>
@@ -127,8 +126,6 @@ architecture adc_arch of adc is
 					when 15 => SDI_con <= "111110"; --r15
 					when others => SDI_con <= "000010";
 				end case;
-				--config_bit <= config_bit + 1;
-
 				end if;
 				if (config_bit >= 15) then
 					config_bit <= 0;
