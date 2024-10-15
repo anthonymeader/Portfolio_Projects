@@ -11,7 +11,7 @@ Receives RS232 commands to execute instructions
 unsigned int resistance_array[15];
 
 //Actuation Global Variables
-unsigned int retraction_distace = 0;
+unsigned int retraction_distance = 0;
 unsigned int retraction = 0;
 volatile unsigned int pressure;
 volatile int foward = 1;
@@ -85,7 +85,7 @@ void step_motor(void){
         P3OUT ^= BIT0;
     }
     else if (reverse == 1 && foward == 0){
-        for (i = retraction_distace; i > 0; i--){ //retract motor
+        for (i = retraction_distance; i > 0; i--){ //retract motor
             P3OUT ^= BIT0;
             __delay_cycles(350);
         }
@@ -118,7 +118,6 @@ void measure_resistance(void){
         for(i = 0; i<15;i++){
             read_resistance();
             __delay_cycles(500);   //Delay to let buffer catch up
-            previous_channel = 1;
             resistance_array[i] = resistance_ADC; //ADD resistance to array for DEBUG
         }
         min_adc = resistance_array[0];
@@ -130,7 +129,7 @@ void measure_resistance(void){
         resistance = resistance+min_adc;
     }
 
-    resistance = resistance * 1/15; //average 15 measurements
+    resistance = resistance/15; //average 15 measurements
     ADC_Value_1 = (resistance >> 4) & 0xFF; //Highest Byte (ie 0xFFF would be 0xFF) (Upper 8 Bits)
     ADC_Value_2 = resistance & 0x0F; //The lower nibble (ie 0xFFF would be 0x0F) (Lower 4 Bits)
     P2OUT |= BIT0; //asserting these connects the PWS back to the resistance circuit
@@ -138,6 +137,18 @@ void measure_resistance(void){
     P2OUT |= BIT2;
 
 }
+
+void transmit_pressure(){
+    pressure = 0; //reset pressure
+    foward = 0; 
+    reverse = 1; //set reverse flag
+    P3DIR &= ~BIT1; // reverse motor
+    DataIn = 0x00; //clear command
+    ADC_Value_1 = (pressure >> 4) & 0xFF; //Highest Byte (ie 0xFFF would be 0xFF) (Upper 8 Bits)
+    ADC_Value_2 = pressure & 0x0F; //The lower nibble (ie 0xFFF would be 0x0F) (Lower 4 Bits)
+    UCA1IE |= UCTXIE; //start pressure transmission
+}
+
 int main(void)
 {
     WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
@@ -213,7 +224,9 @@ int main(void)
         case 0x41:
             step_motor(); //step motor
             read_pressure(); //read pressure
-            previous_channel = 0;
+            if (pressure > 1000){
+                transmit_pressure();
+            }
             break;
         case 0x42:
             measure_resistance(); //Take resistance measurement
@@ -250,21 +263,12 @@ int main(void)
 __interrupt void ADC_ISR(void){
     if (channel == 1){
         resistance_ADC = ADCMEM0;
+        previous_channel = 1;
     }
     else if (channel == 0){
         pressure = ADCMEM0;
-        if (pressure > 1000){
-            ADC_Value_1 = (pressure >> 4) & 0xFF; //Highest Byte (ie 0xFFF would be 0xFF) (Upper 8 Bits)
-            ADC_Value_2 = pressure & 0x0F; //The lower nibble (ie 0xFFF would be 0x0F) (Lower 4 Bits)
-            pressure = 0;
-            foward = 0;
-            reverse = 1;
-            P3DIR &= ~BIT1; // reverse motor
-            DataIn = 0x00; //clear command
-            UCA1IE |= UCTXIE; //start pressure transmission
-        }
+        previous_channel = 0;
     }
-
 }
 //---------------------------------------------
 //------------UART SERVICE ROUTINE-------------
@@ -274,29 +278,32 @@ __interrupt void EUSCI_A1_TX_ISR(void)
     switch(UCA1IV){
     case 0x02: //receiving data
         if (previous_data == 0x44){
-            j = 0;
-            retraction_distace = UCA1RXBUF * 160; //convert to mm
-            if (retraction_distace >= 11000){
-                retraction_distace = 11000;
+            j = 0; 
+            retraction_distance = UCA1RXBUF * 160; //convert to mm
+            if (retraction_distance >= 11000){
+                retraction_distance = 11000;
             }
             previous_data = 0x00;
         }
+
         else if (previous_data == 0x45){
             retraction = UCA1RXBUF * 160; //convert to mm
             reset_motor = 17400-retraction; //init_motor retraction
             previous_data = 0x00;
-            if ((retraction + retraction_distace) >= 17400){ //max retraction
-                retraction_distace = reset_motor; //for big mounting black
+            if ((retraction + retraction_distance) >= 17400){ //max retraction if mounting block size + retraction distance is too big
+                retraction_distance = reset_motor; 
             }
         }
+
         else{
             DataIn = UCA1RXBUF; //Gets Data from Laptop
         }
+
         break;
     case 0x04: //transmitting data
         UCA1TXBUF = ADC_Value_1; //Transmit Upper Byte
         UCA1TXBUF = ADC_Value_2; //Transmit Lower Nibble
-        UCA1IFG &= ~UCTXCPTIFG;  //Clear Transmit Interrupt
+        UCA1IFG &= ~UCTXCPTIFG;  //Clear Transmit Interrupt Flag
         break;
     default:
         break;
