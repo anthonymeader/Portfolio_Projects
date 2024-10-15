@@ -28,7 +28,7 @@ architecture HPS_Color_LED_arch of HPS_Color_LED is
 	     SYS_CLKs_sec : in std_logic_vector(31 downto 0);
 	     period	      : in std_logic_vector(20 downto 0); --weight 21 at fixed point 10
 	     duty_cycle   : in std_logic_vector(17 downto 0); --weight 18 fixed point 14 -- given in as .50 for now
-		  int_out		: out unsigned(86 downto 0);
+		 int_out		: out unsigned(86 downto 0);
 	     output 	   : out std_logic);
 	end component;
 	
@@ -36,10 +36,10 @@ architecture HPS_Color_LED_arch of HPS_Color_LED is
 	port(clock 	     : in std_logic;
 	     reset 	     : in std_logic;
 	     SW    	     : in std_logic_vector(3 downto 0);
-		  SW_Reg	     : in std_logic_vector(3 downto 0);
+		 SW_Reg	     : in std_logic_vector(3 downto 0);
 	     count 	     : in unsigned(86 downto 0);
-		  count0 	  : in unsigned(86 downto 0);
-		  count1      : in unsigned(86 downto 0);
+		 count0 	  : in unsigned(86 downto 0);
+		 count1      : in unsigned(86 downto 0);
 	     LED 	     : out std_logic_vector(7 downto 0));
 	end component;
 	
@@ -49,7 +49,7 @@ architecture HPS_Color_LED_arch of HPS_Color_LED is
 	signal Led_blue     : std_logic_vector(31 downto 0) := "00000000000000000010000000000000"; --duty cycle value 50%
 	signal period       : std_logic_vector(31 downto 0) := "00000000000000000100110000000000"; -- period value 19ms
 	signal SYS_CLKs_sec : std_logic_vector(31 downto 0) := "00000010111110101111000010000000"; -- 50M
-	signal SW_Reg		  : std_logic_vector(31 downto 0) := "00000000000000000000000000000000"; -- Percentage Selector
+	signal SW_Reg	    : std_logic_vector(31 downto 0) := "00000000000000000000000000000000"; -- Percentage Selector
 	signal int_1 : unsigned(86 downto 0) := (others => '0');
 	signal int_2 : unsigned(86 downto 0) := (others => '0');
 	signal int_3 : unsigned(86 downto 0) := (others => '0');
@@ -63,24 +63,19 @@ architecture HPS_Color_LED_arch of HPS_Color_LED is
 	begin
 	
 	PWM_Controller_1 : myPWM port map (clock => clock, reset => reset, SYS_CLKs_sec => SYS_CLKs_sec,
-												  period=> period(20 downto 0), duty_cycle => Led_red(17 downto 0),
-												  output => red_output, int_out => int_1);
+					   period=> period(20 downto 0), duty_cycle => Led_red(17 downto 0),
+					   output => red_output, int_out => int_1);
 												  
 	PWM_Controller_2 : myPWM port map (clock => clock, reset => reset, SYS_CLKs_sec => SYS_CLKs_sec,
-												  period=> period(20 downto 0), duty_cycle => Led_green(17 downto 0),
-												  output => green_output, int_out => int_2);
+					   period=> period(20 downto 0), duty_cycle => Led_green(17 downto 0),
+					   output => green_output, int_out => int_2);
 												  
 	PWM_Controller_3 : myPWM port map (clock => clock, reset => reset, SYS_CLKs_sec => SYS_CLKs_sec,
-												  period=> period(20 downto 0), duty_cycle => Led_blue(17 downto 0),
-												  output => blue_output, int_out => int_3);
+					   period=> period(20 downto 0), duty_cycle => Led_blue(17 downto 0),
+					   output => blue_output, int_out => int_3);
 												  
-	Percent_Led		  : percent port map (clock => clock, reset => reset, SW(3 downto 0) => SW(3 downto 0), SW_Reg(3 downto 0) => SW_Reg(3 downto 0), 
-													 LED(7 downto 0) => LED(7 downto 0), count => int_1, count0 => int_2, count1 => int_3);
-	
-	--condition : conditioner port map (clock => clock,   reset =>   reset,  input =>  PB, output => pb_signal);
-	--LED_Pat   : LED_Patterns port map(clock => clock,   reset =>   reset, PB => pb_signal, SW => SW, HPS_LED_Control => HPS(0),
-						  					    --SYS_CLKs_Sec => SYS_CLKs_Sec, Base_rate => Base_rate(7 downto 0), LED_reg => LED_r(7 downto 0), LED => LED);
-	
+	Percent_Led      : percent port map (clock => clock, reset => reset, SW(3 downto 0) => SW(3 downto 0), SW_Reg(3 downto 0) => SW_Reg(3 downto 0), 
+					     LED(7 downto 0) => LED(7 downto 0), count => int_1, count0 => int_2, count1 => int_3);
 	avalon_register_read : process(clock)
 	begin
 	if rising_edge(clock) and avs_s1_read = '1' then
@@ -103,7 +98,7 @@ architecture HPS_Color_LED_arch of HPS_Color_LED is
 			Led_green    <= "00000000000000000010000000000000";
 			Led_blue     <= "00000000000000000010000000000000";
 			period       <= "00000000000000000100110000000000";
-		   SYS_CLKs_sec <= "00000010111110101111000010000000";
+		   SYS_CLKs_sec      <= "00000010111110101111000010000000";
 			SW_Reg       <= "00000000000000000000000000000000";
 		elsif rising_edge(clock) and avs_s1_write = '1' then
 			case avs_s1_address is

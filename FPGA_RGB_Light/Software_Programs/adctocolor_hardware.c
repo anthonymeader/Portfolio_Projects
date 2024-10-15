@@ -58,8 +58,7 @@ int main (int argc, char **argv) {
 			fprintf(file_blue, "%d", fp3); //send value to led_blue
 		}
 		else{ //reset addresses
-
-            fseek(file_adc_ch2, 0, SEEK_SET);
+            	        fseek(file_adc_ch2, 0, SEEK_SET);
 			fseek(file_adc_ch3, 0, SEEK_SET);
 			fseek(file_adc_ch4, 0, SEEK_SET);
 
@@ -71,8 +70,8 @@ int main (int argc, char **argv) {
 	}
 	//close files
 	fclose(file_adc_ch2);
-    fclose(file_adc_ch3);
-    fclose(file_adc_ch4);
+        fclose(file_adc_ch3);
+        fclose(file_adc_ch4);
 	fclose(file_red);
 	fclose(file_green);
 	fclose(file_blue);

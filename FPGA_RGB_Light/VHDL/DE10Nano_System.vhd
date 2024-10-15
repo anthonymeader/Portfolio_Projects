@@ -294,9 +294,6 @@ architecture DE10Nano_arch of DE10Nano_System is
             memory_mem_dm                       : out   std_logic_vector(3 downto 0);                     -- mem_dm
             memory_oct_rzqin                    : in    std_logic                     := 'X';             -- oct_rzqin
             reset_reset_n                       : in    std_logic                     := 'X';             -- reset_n
-            --led_color_red_output                : out   std_logic;                                        -- red_output
-            --led_color_green_output              : out   std_logic;                                        -- green_output
-            --led_color_blue_output               : out   std_logic;                                        -- blue_output
 				output_sclk                         : out   std_logic;                                        -- sclk
             output_cs_n                         : out   std_logic;                                        -- cs_n
             output_dout                         : in    std_logic                     := 'X';             -- dout
@@ -502,10 +499,7 @@ begin
             memory_mem_odt                      => HPS_DDR3_ODT,
             memory_mem_dm                       => HPS_DDR3_DM,
             memory_oct_rzqin                    => HPS_DDR3_RZQ,
-				
-           -- led_color_red_output                => Audio_Mini_GPIO_0(0),                --               led_color.red_output
-           -- led_color_green_output              => Audio_Mini_GPIO_0(2),              --                        .green_output
-           -- led_color_blue_output               => Audio_Mini_GPIO_0(4),              --                        .blue_output
+            
 				color_led_red_output                => Audio_Mini_GPIO_0(0),                --               color_led.red_output
             color_led_green_output              => Audio_Mini_GPIO_0(2),              --                        .green_output
             color_led_blue_output               => Audio_Mini_GPIO_0(4),               --                        .blue_output

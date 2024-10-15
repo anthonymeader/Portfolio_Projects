@@ -42,11 +42,11 @@ begin
 	-- Assign PWM PERIOD
 	  period_ms    <= (unsigned(period) * unsigned(p2dscalar));
 	  periodClocks <= (unsigned(period_ms) * unsigned(SYS_CLKs_Sec));
-	  periodCount  <=  to_integer(periodClocks(68 downto 25));
+	  periodCount  <=  to_integer(periodClocks(68 downto 25)); --fixed point
 	  
 	-- Assign Duty cycle   
 	  dutyClocks <= (unsigned(duty_cycle) * unsigned(periodClocks));
-	  dutyCount  <=  to_integer(dutyClocks(86 downto 39)); 
+	  dutyCount  <=  to_integer(dutyClocks(86 downto 39)); --fixed point
 	  int_out <= dutyClocks;
 
 	end if;
@@ -63,10 +63,6 @@ begin
 	 elsif ((count1 >= dutyCount) and (count2 < periodCount)) then
 	   output <= '0'; 
 	   count2 <= count2 + 1;
---	 elsif ((count1 >= dutyCount) and (count2 = periodCount)) then
---	   output <= '0';
---      count1 <= 0;
---	   count2 <= 0;
 	 else
 		output <= '0';
 		count1 <= 0;
