@@ -1,0 +1,6 @@
+# Ignore all Verilog Files
+*.v
+*.vh
+
+# Ignore all HTML files
+*.html
